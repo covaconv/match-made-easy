@@ -25,7 +25,6 @@ const RoleSelect = ({ onSelect }: RoleSelectProps) => {
       <div className="space-y-6 w-full">
         <div className="text-center space-y-1">
           <h2 className="text-2xl font-bold text-foreground">Choose your role</h2>
-          <p className="text-muted-foreground text-sm">How do you want to use EPIC Match?</p>
         </div>
         <div className="grid gap-4">
           {roles.map(({ role, title, description }) => (

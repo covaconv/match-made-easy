@@ -15,7 +15,7 @@ const INDUSTRY_ADJACENCY: Record<string, string[]> = {
     HealthTech: ['SaaS', 'Social Impact'],
     Consumer: ['Marketplace', 'Social Impact'],
     Climate: ['Social Impact'],
-    Social Impact: ['EdTech', 'Climate', 'HealthTech', 'Consumer'],
+    'Social Impact': ['EdTech', 'Climate', 'HealthTech', 'Consumer'],
     Marketplace: ['Consumer', 'SaaS', 'Fintech'],
     Other: [],
 };

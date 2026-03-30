@@ -3,6 +3,7 @@ import { Screen, Role, FounderProfile, MentorProfile, MatchResult, FounderMatchR
 import { mentors } from '@/data/mentors';
 import { founders } from '@/data/founders';
 import { matchFounderToMentors, matchMentorToFounders } from '@/lib/matching';
+import { enrichMatchesWithClaude } from '@/lib/claude';
 import Landing from '@/components/Landing';
 import RoleSelect from '@/components/RoleSelect';
 import FounderForm from '@/components/FounderForm';
@@ -28,16 +29,16 @@ const Index = () => {
     setIsMatching(false);
   }, []);
 
-  const handleFounderSubmit = useCallback((data: FounderProfile) => {
-    setFounderData(data);
-    setScreen('founder-loading');
-    setIsMatching(true);
+  const handleFounderSubmit = useCallback(async (data: FounderProfile) => {
+  setFounderData(data);
+  setScreen('founder-loading');
+  setIsMatching(true);
 
-    // Start AI matching in background
-      const results = matchFounderToMentors(data, mentors);
-      setFounderResults(results);
-      setIsMatching(false);
-  }, []);
+  const deterministic = matchFounderToMentors(data, mentors);
+  const results = await enrichMatchesWithClaude(data, deterministic);
+  setFounderResults(results);
+  setIsMatching(false);
+}, []);
 
   const handleMentorSubmit = useCallback((data: MentorProfile) => {
     setMentorData(data);

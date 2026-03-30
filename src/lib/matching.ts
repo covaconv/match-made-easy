@@ -270,13 +270,16 @@ export function matchFounderToMentors(
         const deterministicScore = indScore + cadScore + expBonus;
 
         results.push({
-            mentor,
-            deterministicScore,
-            totalScore: normalizeDeterministicScore(deterministicScore),
-            explanation: generateDeterministicExplanation(founder, mentor),
-            expertiseTags: mentor.expertise.slice(0, 4),
-            caveat: generateDeterministicCaveat(founder, mentor),
-        });
+  mentor,
+  deterministicScore,
+  industryScore: indScore,
+  cadenceScore: cadScore,
+  expBonusScore: expBonus,
+  totalScore: normalizeDeterministicScore(deterministicScore),
+  explanation: generateDeterministicExplanation(founder, mentor),
+  expertiseTags: mentor.expertise.slice(0, 4),
+  caveat: generateDeterministicCaveat(founder, mentor),
+});
     }
 
     return results.sort((a, b) => b.deterministicScore - a.deterministicScore).slice(0, 3);
@@ -303,13 +306,16 @@ export function matchMentorToFounders(
         const deterministicScore = indScore + cadScore + expBonus;
 
         results.push({
-            founder,
-            deterministicScore,
-            totalScore: normalizeDeterministicScore(deterministicScore),
-            explanation: generateFounderSideExplanation(mentor, founder),
-            relevantTags: [founder.industry, founder.startupStage, founder.mainChallenge],
-            caveat: generateFounderSideCaveat(mentor, founder),
-        });
+  founder,
+  deterministicScore,
+  industryScore: indScore,
+  cadenceScore: cadScore,
+  expBonusScore: expBonus,
+  totalScore: normalizeDeterministicScore(deterministicScore),
+  explanation: generateFounderSideExplanation(mentor, founder),
+  relevantTags: [founder.industry, founder.startupStage, founder.mainChallenge],
+  caveat: generateFounderSideCaveat(mentor, founder),
+});
     }
 
     return results.sort((a, b) => b.deterministicScore - a.deterministicScore).slice(0, 3);

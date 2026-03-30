@@ -33,6 +33,9 @@ export interface FounderDemoProfile extends FounderProfile {
 export interface MatchResult {
   mentor: MentorProfile;
   deterministicScore: number;
+  industryScore: number;
+  cadenceScore: number;
+  expBonusScore: number;
   aiScore?: number;
   totalScore: number;
   explanation: string;
@@ -43,6 +46,9 @@ export interface MatchResult {
 export interface FounderMatchResult {
   founder: FounderDemoProfile;
   deterministicScore: number;
+  industryScore: number;
+  cadenceScore: number;
+  expBonusScore: number;
   aiScore?: number;
   totalScore: number;
   explanation: string;

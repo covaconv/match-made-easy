@@ -104,8 +104,12 @@ const Index = () => {
       )}
 
       {screen === 'founder-results' && (
-        <ResultsScreen results={founderResults} onStartOver={startOver} />
-      )}
+              <ResultsScreen
+                  results={founderResults}
+                  eligibleCount={mentors.length}
+                  onStartOver={startOver}
+              />
+       )}
 
       {(screen === 'mentor-step-1' || screen === 'mentor-step-2' || screen === 'mentor-step-3') && (
         <MentorForm onSubmit={handleMentorSubmit} onBack={() => setScreen('role')} />
@@ -122,9 +126,13 @@ const Index = () => {
         <LoadingScreen onComplete={() => handleLoadingComplete('mentor-results')} isMentor />
       )}
 
-      {screen === 'mentor-results' && (
-        <ResultsScreen results={mentorResults} isMentor onStartOver={startOver} />
-      )}
+          {screen === 'mentor-results' && (
+              <ResultsScreen
+                  results={mentorResults}
+                  isMentor
+                  onStartOver={startOver}
+              />
+          )}
     </>
   );
 };

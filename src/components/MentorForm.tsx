@@ -22,7 +22,7 @@ interface MentorFormProps {
 
 const MentorForm = ({ onSubmit, onBack }: MentorFormProps) => {
   const [step, setStep] = useState(1);
-  const [data, setData] = useState<Omit<MentorProfile, 'id'>>({
+    const [data, setData] = useState<Omit<MentorProfile, 'id' | 'currentMatches'>>({
     fullName: '',
     majors: [],
     currentRole: '',
@@ -48,7 +48,7 @@ const MentorForm = ({ onSubmit, onBack }: MentorFormProps) => {
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
-    else onSubmit({ ...data, id: 'user-mentor' } as MentorProfile);
+    else onSubmit({ ...data, id: 'user-mentor', currentMatches: 0 });
   };
 
   const handleBack = () => {

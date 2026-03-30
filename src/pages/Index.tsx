@@ -11,6 +11,7 @@ import MentorForm from '@/components/MentorForm';
 import LoadingScreen from '@/components/LoadingScreen';
 import ResultsScreen from '@/components/ResultsScreen';
 import ConfirmationScreen from '@/components/ConfirmationScreen';
+import LoginRegister from '@/components/LoginRegister';
 
 const Index = () => {
   const [screen, setScreen] = useState<Screen>('landing');
@@ -81,6 +82,13 @@ const Index = () => {
   return (
     <>
       {screen === 'landing' && <Landing onStart={() => setScreen('role')} />}
+
+      {screen === 'auth' && (
+        <LoginRegister
+          onAuthSuccess={() => setScreen('role')}
+          onSkip={() => setScreen('role')}
+        />
+      )}
 
       {screen === 'role' && <RoleSelect onSelect={handleRoleSelect} />}
 

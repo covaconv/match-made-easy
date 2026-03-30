@@ -281,6 +281,10 @@ Return your response in this exact JSON format:
     }
 
     const data = await response.json();
+    
+    // DEBUG: Log the full raw response to see exactly what Claude sent
+    console.log("Claude Raw Response Data:", data);
+
     const rawText = data.content
       .filter((block: { type: string }) => block.type === 'text')
       .map((block: { text: string }) => block.text)
@@ -291,12 +295,16 @@ Return your response in this exact JSON format:
 
     return parsed.matches
       .map((match) => {
+        // FIX: Force both IDs to strings to prevent type mismatch failures
         const original = deterministicResults.find(
-          (r) => r.mentor.id === match.mentor_id
+          (r) => String(r.mentor.id) === String(match.mentor_id)
         );
-        if (!original) return null;
+        
+        if (!original) {
+          console.warn(`Could not find deterministic match for Mentor ID: ${match.mentor_id}`);
+          return null;
+        }
 
-        // Always recompute total in app code
         const finalTotal = Math.min(
           100,
           match.score_challenge_expertise +
@@ -311,7 +319,9 @@ Return your response in this exact JSON format:
           aiScore: match.score_challenge_expertise + match.score_open_text_alignment,
           totalScore: finalTotal,
           explanation: match.explanation,
-          expertiseTags: match.expertise_tags ?? original.expertiseTags,
+          expertiseTags: (match.expertise_tags && match.expertise_tags.length > 0) 
+            ? match.expertise_tags 
+            : original.expertiseTags,
           caveat: match.caveat ?? undefined,
         };
       })

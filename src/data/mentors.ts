@@ -88,7 +88,7 @@ export const mentors: MentorProfile[] = [
     meetingFrequency: 'Monthly',
     monthlyTime: 'Up to 1 hour',
       mentoringCapacity: '2 founders',
-      currentMatches: 2,
+      currentMatches: 0,
     threeMonthOutcome: 'Help founders professionalize operations and build hiring frameworks for their first 10 employees.',
   },
   {
@@ -98,7 +98,7 @@ export const mentors: MentorProfile[] = [
     currentRole: 'Founder & CEO at EdMachine',
     experienceBackground: ['Founder'],
     expertise: ['Go-to-market', 'Product', 'Growth', 'Design'],
-    industries: ['EdTech', 'Social Impact', 'Consumer'],
+    industries: ['EdTech', 'Climate', 'Social Impact', 'Consumer'],
     preferredMenteeStages: ['Idea', 'MVP', 'Early traction'],
     meetingFrequency: 'Biweekly',
     monthlyTime: '2 to 3 hours',

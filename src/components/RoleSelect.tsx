@@ -7,16 +7,16 @@ interface RoleSelectProps {
 }
 
 const roles: { role: Role; title: string; description: string }[] = [
-  {
-    role: 'founder',
-    title: "I'm a founder",
-    description: 'Find the top alumni mentors who fit your current needs.',
-  },
-  {
-    role: 'mentor',
-    title: "I'm a mentor",
-    description: 'Join the mentor pool and discover founders to support.',
-  },
+    {
+        role: 'founder',
+        title: "I'm a Founder",
+        description: "I'm building something and need guidance.",
+    },
+    {
+        role: 'mentor',
+        title: "I'm a Mentor",
+        description: "I'm an ITAM alum who wants to help founders.",
+    },
 ];
 
 const RoleSelect = ({ onSelect }: RoleSelectProps) => {

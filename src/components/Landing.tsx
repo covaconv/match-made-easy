@@ -10,7 +10,7 @@ const Landing = ({ onStart }: LandingProps) => {
             <div className="space-y-6">
                 <div className="space-y-3">
                     <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-                        Find your perfect mentor match
+                        EPIC MATCH
                     </h1>
 
                     <p className="text-lg text-muted-foreground">

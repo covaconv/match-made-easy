@@ -132,10 +132,11 @@ const LoginRegister = ({ onAuthSuccess, onSkip }: LoginRegisterProps) => {
               </div>
               <div className="space-y-2">
                 <Label>I am a…</Label>
-                <ChipSelector
+              <ChipSelector
+                  label="Role"
                   options={['Founder', 'Mentor']}
                   selected={role === 'founder' ? 'Founder' : 'Mentor'}
-                  onChange={(val) => setRole(val.toLowerCase() as UserRole)}
+                  onChange={(val) => setRole((typeof val === 'string' ? val : val[0]).toLowerCase() as UserRole)}
                 />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}

@@ -11,6 +11,7 @@ import MentorForm from '@/components/MentorForm';
 import LoadingScreen from '@/components/LoadingScreen';
 import ResultsScreen from '@/components/ResultsScreen';
 import ConfirmationScreen from '@/components/ConfirmationScreen';
+import LoginRegister from '@/components/LoginRegister';
 
 const Index = () => {
   const [screen, setScreen] = useState<Screen>('landing');

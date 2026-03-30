@@ -108,7 +108,7 @@ export function matchFounderToMentors(
     .slice(0, 3)
     .map((r) => ({
       ...r,
-      // Normalize to 0-100 scale (max deterministic ~50)
+      // Keep raw deterministic score for AI merging; normalize to 0-100 as fallback display
       totalScore: Math.min(100, Math.round((r.totalScore / 50) * 100)),
     }));
 }

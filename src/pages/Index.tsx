@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Screen, Role, FounderProfile, MentorProfile, MatchResult, FounderMatchResult } from '@/types';
 import { mentors } from '@/data/mentors';
 import { founders } from '@/data/founders';
-import { matchFounderToMentors, matchMentorToFounders } from '@/lib/matching';
+import { aiMatchFounderToMentors, aiMatchMentorToFounders } from '@/lib/aiMatching';
 import Landing from '@/components/Landing';
 import RoleSelect from '@/components/RoleSelect';
 import FounderForm from '@/components/FounderForm';
@@ -16,18 +16,33 @@ const Index = () => {
   const [founderResults, setFounderResults] = useState<MatchResult[]>([]);
   const [mentorResults, setMentorResults] = useState<FounderMatchResult[]>([]);
   const [mentorData, setMentorData] = useState<MentorProfile | null>(null);
+  const [founderData, setFounderData] = useState<FounderProfile | null>(null);
+  const [isMatching, setIsMatching] = useState(false);
 
   const startOver = useCallback(() => {
     setScreen('landing');
     setFounderResults([]);
     setMentorResults([]);
     setMentorData(null);
+    setFounderData(null);
+    setIsMatching(false);
   }, []);
 
   const handleFounderSubmit = useCallback((data: FounderProfile) => {
-    const results = matchFounderToMentors(data, mentors);
-    setFounderResults(results);
+    setFounderData(data);
     setScreen('founder-loading');
+    setIsMatching(true);
+
+    // Start AI matching in background
+    aiMatchFounderToMentors(data, mentors)
+      .then((results) => {
+        setFounderResults(results);
+        setIsMatching(false);
+      })
+      .catch((err) => {
+        console.error('Matching failed:', err);
+        setIsMatching(false);
+      });
   }, []);
 
   const handleMentorSubmit = useCallback((data: MentorProfile) => {
@@ -37,11 +52,38 @@ const Index = () => {
 
   const handleMentorSeeMatches = useCallback(() => {
     if (mentorData) {
-      const results = matchMentorToFounders(mentorData, founders);
-      setMentorResults(results);
       setScreen('mentor-loading');
+      setIsMatching(true);
+
+      aiMatchMentorToFounders(mentorData, founders)
+        .then((results) => {
+          setMentorResults(results);
+          setIsMatching(false);
+        })
+        .catch((err) => {
+          console.error('Matching failed:', err);
+          setIsMatching(false);
+        });
     }
   }, [mentorData]);
+
+  const handleLoadingComplete = useCallback((target: Screen) => {
+    // Only transition if matching is done; otherwise wait
+    if (!isMatching) {
+      setScreen(target);
+    } else {
+      // Poll until matching finishes
+      const interval = setInterval(() => {
+        setIsMatching((current) => {
+          if (!current) {
+            clearInterval(interval);
+            setScreen(target);
+          }
+          return current;
+        });
+      }, 300);
+    }
+  }, [isMatching]);
 
   const handleRoleSelect = useCallback((role: Role) => {
     setScreen(role === 'founder' ? 'founder-step-1' : 'mentor-step-1');
@@ -58,7 +100,7 @@ const Index = () => {
       )}
 
       {screen === 'founder-loading' && (
-        <LoadingScreen onComplete={() => setScreen('founder-results')} />
+        <LoadingScreen onComplete={() => handleLoadingComplete('founder-results')} />
       )}
 
       {screen === 'founder-results' && (
@@ -77,7 +119,7 @@ const Index = () => {
       )}
 
       {screen === 'mentor-loading' && (
-        <LoadingScreen onComplete={() => setScreen('mentor-results')} isMentor />
+        <LoadingScreen onComplete={() => handleLoadingComplete('mentor-results')} isMentor />
       )}
 
       {screen === 'mentor-results' && (

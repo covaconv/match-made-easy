@@ -170,7 +170,7 @@ const FounderForm = ({ onSubmit, onBack }: FounderFormProps) => {
             }
             className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {step === 3 ? 'Find my mentors' : 'Next'}
+            {step === 3 ? 'Find My Matches' : 'Next'}
           </button>
         </div>
       </div>

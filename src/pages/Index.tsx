@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Screen, Role, FounderProfile, MentorProfile, MatchResult, FounderMatchResult } from '@/types';
 import { mentors } from '@/data/mentors';
 import { founders } from '@/data/founders';
-import { aiMatchFounderToMentors, aiMatchMentorToFounders } from '@/lib/aiMatching';
+import { matchFounderToMentors, matchMentorToFounders } from '@/lib/matching';
 import Landing from '@/components/Landing';
 import RoleSelect from '@/components/RoleSelect';
 import FounderForm from '@/components/FounderForm';
@@ -34,15 +34,9 @@ const Index = () => {
     setIsMatching(true);
 
     // Start AI matching in background
-    aiMatchFounderToMentors(data, mentors)
-      .then((results) => {
-        setFounderResults(results);
-        setIsMatching(false);
-      })
-      .catch((err) => {
-        console.error('Matching failed:', err);
-        setIsMatching(false);
-      });
+      const results = matchFounderToMentors(data, mentors);
+      setFounderResults(results);
+      setIsMatching(false);
   }, []);
 
   const handleMentorSubmit = useCallback((data: MentorProfile) => {
@@ -55,15 +49,9 @@ const Index = () => {
       setScreen('mentor-loading');
       setIsMatching(true);
 
-      aiMatchMentorToFounders(mentorData, founders)
-        .then((results) => {
-          setMentorResults(results);
-          setIsMatching(false);
-        })
-        .catch((err) => {
-          console.error('Matching failed:', err);
-          setIsMatching(false);
-        });
+        const results = matchMentorToFounders(mentorData, founders);
+        setMentorResults(results);
+        setIsMatching(false);
     }
   }, [mentorData]);
 

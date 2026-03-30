@@ -11,18 +11,19 @@ export interface FounderProfile {
 }
 
 export interface MentorProfile {
-  id: string;
-  fullName: string;
-  majors: string[];
-  currentRole: string;
-  experienceBackground: string[];
-  expertise: string[];
-  industries: string[];
-  preferredMenteeStages: string[];
-  meetingFrequency: string;
-  monthlyTime: string;
-  mentoringCapacity: string;
-  threeMonthOutcome: string;
+    id: string;
+    fullName: string;
+    majors: string[];
+    currentRole: string;
+    experienceBackground: string[];
+    expertise: string[];
+    industries: string[];
+    preferredMenteeStages: string[];
+    meetingFrequency: string;
+    monthlyTime: string;
+    mentoringCapacity: string;
+    currentMatches: number;
+    threeMonthOutcome: string;
 }
 
 export interface FounderDemoProfile extends FounderProfile {

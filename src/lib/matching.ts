@@ -1,215 +1,316 @@
-import { FounderProfile, MentorProfile, MatchResult, FounderDemoProfile, FounderMatchResult } from '@/types';
+import {
+    FounderProfile,
+    MentorProfile,
+    MatchResult,
+    FounderDemoProfile,
+    FounderMatchResult,
+} from '@/types';
 
 const CADENCE_ORDER = ['Weekly', 'Biweekly', 'Monthly', 'As needed'];
 
-function cadenceScore(a: string, b: string): number {
-  const ia = CADENCE_ORDER.indexOf(a);
-  const ib = CADENCE_ORDER.indexOf(b);
-  if (ia === -1 || ib === -1) return 0;
-  const diff = Math.abs(ia - ib);
-  if (diff === 0) return 10;
-  if (diff === 1) return 6;
-  return 2;
+const INDUSTRY_ADJACENCY: Record<string, string[]> = {
+    Fintech: ['SaaS', 'Marketplace'],
+    EdTech: ['SaaS', 'Social Impact'],
+    SaaS: ['Fintech', 'EdTech', 'HealthTech', 'Marketplace'],
+    HealthTech: ['SaaS', 'Social Impact'],
+    Consumer: ['Marketplace', 'Social Impact'],
+    Climate: ['Social Impact'],
+    Social Impact: ['EdTech', 'Climate', 'HealthTech', 'Consumer'],
+    Marketplace: ['Consumer', 'SaaS', 'Fintech'],
+    Other: [],
+};
+
+function getCapacityLimit(capacity: string): number {
+    if (capacity === '1 founder') return 1;
+    if (capacity === '2 founders') return 2;
+    if (capacity === '3+ founders') return 3;
+    return 0;
 }
 
-function industryScore(founderIndustry: string, mentorIndustries: string[]): number {
-  return mentorIndustries.includes(founderIndustry) ? 15 : 0;
+function getOpenSlots(mentor: MentorProfile): number {
+    return Math.max(0, getCapacityLimit(mentor.mentoringCapacity) - mentor.currentMatches);
 }
 
 function stageFilter(founderStage: string, mentorStages: string[]): boolean {
-  return mentorStages.includes(founderStage);
+    return mentorStages.includes(founderStage);
 }
 
 function capacityFilter(mentor: MentorProfile): boolean {
-  // In demo mode, all mentors are available
-  return true;
+    return getOpenSlots(mentor) > 0;
 }
 
-function experienceBonus(mentor: MentorProfile): number {
-  if (mentor.experienceBackground.includes('Founder')) return 5;
-  if (mentor.experienceBackground.includes('Operator')) return 3;
-  return 0;
+function industryScore(founderIndustry: string, mentorIndustries: string[]): number {
+    if (mentorIndustries.includes(founderIndustry)) return 20;
+
+    const adjacent = INDUSTRY_ADJACENCY[founderIndustry] || [];
+    if (mentorIndustries.some((industry) => adjacent.includes(industry))) return 12;
+
+    if (founderIndustry === 'Other' || mentorIndustries.includes('Other')) return 5;
+
+    return 0;
 }
 
-function challengeExpertiseOverlap(challenge: string, supportNeeds: string[], expertise: string[]): number {
-  let score = 0;
-  // Map challenges to related expertise
-  const challengeMap: Record<string, string[]> = {
-    'Product': ['Product', 'Design'],
-    'Validation': ['Product', 'Growth'],
-    'Technical build': ['Engineering', 'Product'],
-    'Go-to-market': ['Go-to-market', 'Growth', 'B2B Sales'],
-    'Growth': ['Growth', 'Go-to-market'],
-    'Fundraising': ['Fundraising'],
-    'Operations': ['Operations', 'Hiring'],
-    'Hiring': ['Hiring', 'Operations'],
-  };
+function cadenceDistance(a: string, b: string): number {
+    const ia = CADENCE_ORDER.indexOf(a);
+    const ib = CADENCE_ORDER.indexOf(b);
+    if (ia === -1 || ib === -1) return 3;
+    return Math.abs(ia - ib);
+}
 
-  const relevant = challengeMap[challenge] || [];
-  const overlap = relevant.filter((r) => expertise.includes(r));
-  score += overlap.length * 5;
+function baseCadenceScore(founderFrequency: string, mentorFrequency: string): number {
+    const diff = cadenceDistance(founderFrequency, mentorFrequency);
+    if (diff === 0) return 10;
+    if (diff === 1) return 6;
+    if (diff === 2) return 2;
+    return 0;
+}
 
-  // Support needs map
-  const needsMap: Record<string, string[]> = {
-    'Product feedback': ['Product', 'Design'],
-    'Technical guidance': ['Engineering'],
-    'Go-to-market coaching': ['Go-to-market', 'B2B Sales'],
-    'Growth strategy': ['Growth'],
-    'Fundraising advice': ['Fundraising'],
-    'Introductions': ['Fundraising', 'Growth'],
-    'Accountability': [],
-  };
+function cadenceScore(
+    founderFrequency: string,
+    mentorFrequency: string,
+    mentorMonthlyTime: string
+): number {
+    let score = baseCadenceScore(founderFrequency, mentorFrequency);
 
-  for (const need of supportNeeds) {
-    const related = needsMap[need] || [];
-    const needOverlap = related.filter((r) => expertise.includes(r));
-    score += needOverlap.length * 3;
-  }
+    if (mentorMonthlyTime === 'Up to 1 hour') {
+        if (founderFrequency === 'Weekly') {
+            score = Math.min(score, 2);
+        } else if (founderFrequency === 'Biweekly') {
+            score = Math.min(score, 6);
+        }
+    }
 
-  return Math.min(score, 20);
+    return score;
+}
+
+function experienceBonus(founder: FounderProfile, mentor: MentorProfile): number {
+    let score = 0;
+
+    const hasFounder = mentor.experienceBackground.includes('Founder');
+    const hasOperator = mentor.experienceBackground.includes('Operator');
+    const hasInvestor = mentor.experienceBackground.includes('Investor');
+    const hasCorporate = mentor.experienceBackground.includes('Corporate');
+    const hasConsultant = mentor.experienceBackground.includes('Consultant');
+
+    if (hasFounder) {
+        if (['Idea', 'MVP', 'Early traction'].includes(founder.startupStage)) {
+            score = Math.max(score, 8);
+        } else if (founder.startupStage === 'Revenue') {
+            score = Math.max(score, 4);
+        }
+    }
+
+    if (
+        hasInvestor &&
+        (founder.mainChallenge === 'Fundraising' ||
+            founder.supportNeeds.includes('Fundraising advice') ||
+            founder.supportNeeds.includes('Introductions'))
+    ) {
+        score = Math.max(score, 9);
+    }
+
+    if (
+        hasOperator &&
+        ['Operations', 'Growth', 'Go-to-market', 'Hiring'].includes(founder.mainChallenge)
+    ) {
+        score = Math.max(score, 8);
+    }
+
+    if (
+        hasCorporate &&
+        ['Operations', 'Hiring', 'Go-to-market'].includes(founder.mainChallenge)
+    ) {
+        score = Math.max(score, 6);
+    }
+
+    if (
+        hasConsultant &&
+        ['Validation', 'Product', 'Go-to-market'].includes(founder.mainChallenge)
+    ) {
+        score = Math.max(score, 5);
+    }
+
+    return Math.min(score, 10);
+}
+
+function normalizeDeterministicScore(score: number): number {
+    return Math.min(100, Math.round((score / 40) * 100));
+}
+
+function generateDeterministicExplanation(founder: FounderProfile, mentor: MentorProfile): string {
+    const sentences: string[] = [];
+
+    if (mentor.industries.includes(founder.industry)) {
+        sentences.push(
+            `${mentor.fullName} is a strong domain fit because they already work in ${founder.industry}.`
+        );
+    } else {
+        const adjacent = INDUSTRY_ADJACENCY[founder.industry] || [];
+        if (mentor.industries.some((industry) => adjacent.includes(industry))) {
+            sentences.push(
+                `${mentor.fullName} brings experience from industries adjacent to ${founder.industry}, which can still translate well to your company.`
+            );
+        }
+    }
+
+    if (mentor.preferredMenteeStages.includes(founder.startupStage)) {
+        sentences.push(
+            `They prefer working with founders at the ${founder.startupStage} stage, so the match is operationally aligned from the start.`
+        );
+    }
+
+    if (
+        mentor.experienceBackground.includes('Founder') &&
+        ['Idea', 'MVP', 'Early traction'].includes(founder.startupStage)
+    ) {
+        sentences.push(
+            `Their founder background is especially relevant for an early-stage startup like yours.`
+        );
+    } else if (
+        mentor.experienceBackground.includes('Investor') &&
+        (founder.mainChallenge === 'Fundraising' ||
+            founder.supportNeeds.includes('Fundraising advice'))
+    ) {
+        sentences.push(
+            `Their investor background could be particularly useful given your current fundraising-related needs.`
+        );
+    }
+
+    return (
+        sentences.slice(0, 2).join(' ') ||
+        `${mentor.fullName} looks like a solid fit based on stage, availability, and background.`
+    );
+}
+
+function generateDeterministicCaveat(founder: FounderProfile, mentor: MentorProfile): string | undefined {
+    if (mentor.monthlyTime === 'Up to 1 hour') {
+        return 'This mentor has limited monthly availability, so each session would need to be focused.';
+    }
+
+    const diff = cadenceDistance(founder.meetingFrequency, mentor.meetingFrequency);
+    if (diff >= 2) {
+        return `Your preferred meeting cadence and this mentor's availability style may need to be aligned early.`;
+    }
+
+    if (!mentor.industries.includes(founder.industry)) {
+        const adjacent = INDUSTRY_ADJACENCY[founder.industry] || [];
+        if (mentor.industries.some((industry) => adjacent.includes(industry))) {
+            return 'Their industry background is adjacent rather than exact, so some context ramp-up may be needed.';
+        }
+    }
+
+    return undefined;
+}
+
+function generateFounderSideExplanation(
+    mentor: MentorProfile,
+    founder: FounderDemoProfile
+): string {
+    const sentences: string[] = [];
+
+    if (mentor.preferredMenteeStages.includes(founder.startupStage)) {
+        sentences.push(
+            `${founder.fullName} is at the ${founder.startupStage} stage, which fits the kinds of founders you prefer to mentor.`
+        );
+    }
+
+    if (mentor.industries.includes(founder.industry)) {
+        sentences.push(
+            `Their company operates in ${founder.industry}, an industry you already know well.`
+        );
+    } else {
+        const adjacent = INDUSTRY_ADJACENCY[founder.industry] || [];
+        if (mentor.industries.some((industry) => adjacent.includes(industry))) {
+            sentences.push(
+                `Their industry is adjacent to sectors you already know, which could still make this a useful match.`
+            );
+        }
+    }
+
+    return (
+        sentences.slice(0, 2).join(' ') ||
+        `${founder.fullName} could be a reasonable match based on stage, industry, and availability fit.`
+    );
+}
+
+function generateFounderSideCaveat(
+    mentor: MentorProfile,
+    founder: FounderDemoProfile
+): string | undefined {
+    if (mentor.monthlyTime === 'Up to 1 hour') {
+        return 'Your monthly availability is limited, so expectations may need to be set clearly from the beginning.';
+    }
+
+    const diff = cadenceDistance(founder.meetingFrequency, mentor.meetingFrequency);
+    if (diff >= 2) {
+        return `Your preferred cadence and this founder's preferred cadence may not align perfectly.`;
+    }
+
+    return undefined;
 }
 
 export function matchFounderToMentors(
-  founder: FounderProfile,
-  allMentors: MentorProfile[],
+    founder: FounderProfile,
+    allMentors: MentorProfile[]
 ): MatchResult[] {
-  const results: MatchResult[] = [];
+    const results: MatchResult[] = [];
 
-  for (const mentor of allMentors) {
-    if (!stageFilter(founder.startupStage, mentor.preferredMenteeStages)) continue;
-    if (!capacityFilter(mentor)) continue;
+    for (const mentor of allMentors) {
+        if (!stageFilter(founder.startupStage, mentor.preferredMenteeStages)) continue;
+        if (!capacityFilter(mentor)) continue;
 
-    const indScore = industryScore(founder.industry, mentor.industries);
-    const cadScore = cadenceScore(founder.meetingFrequency, mentor.meetingFrequency);
-    const expBonus = experienceBonus(mentor);
-    const challengeScore = challengeExpertiseOverlap(
-      founder.mainChallenge,
-      founder.supportNeeds,
-      mentor.expertise,
-    );
+        const indScore = industryScore(founder.industry, mentor.industries);
+        const cadScore = cadenceScore(
+            founder.meetingFrequency,
+            mentor.meetingFrequency,
+            mentor.monthlyTime
+        );
+        const expBonus = experienceBonus(founder, mentor);
 
-    const deterministicScore = indScore + cadScore + expBonus + challengeScore;
+        const deterministicScore = indScore + cadScore + expBonus;
 
-    // Pick up to 4 relevant expertise tags
-    const tags = mentor.expertise.slice(0, 4);
+        results.push({
+            mentor,
+            deterministicScore,
+            totalScore: normalizeDeterministicScore(deterministicScore),
+            explanation: generateDeterministicExplanation(founder, mentor),
+            expertiseTags: mentor.expertise.slice(0, 4),
+            caveat: generateDeterministicCaveat(founder, mentor),
+        });
+    }
 
-    results.push({
-      mentor,
-      deterministicScore,
-      totalScore: deterministicScore,
-      explanation: generateExplanation(founder, mentor, deterministicScore),
-      expertiseTags: tags,
-      caveat: generateCaveat(founder, mentor),
-    });
-  }
-
-  return results
-    .sort((a, b) => b.totalScore - a.totalScore)
-    .slice(0, 3)
-    .map((r) => ({
-      ...r,
-      // Keep raw deterministic score for AI merging; normalize to 0-100 as fallback display
-      totalScore: Math.min(100, Math.round((r.totalScore / 50) * 100)),
-    }));
+    return results.sort((a, b) => b.deterministicScore - a.deterministicScore).slice(0, 3);
 }
 
 export function matchMentorToFounders(
-  mentor: MentorProfile,
-  allFounders: FounderDemoProfile[],
+    mentor: MentorProfile,
+    allFounders: FounderDemoProfile[]
 ): FounderMatchResult[] {
-  const results: FounderMatchResult[] = [];
+    const results: FounderMatchResult[] = [];
 
-  for (const founder of allFounders) {
-    if (!stageFilter(founder.startupStage, mentor.preferredMenteeStages)) continue;
+    for (const founder of allFounders) {
+        if (!stageFilter(founder.startupStage, mentor.preferredMenteeStages)) continue;
+        if (!capacityFilter(mentor)) continue;
 
-    const indScore = industryScore(founder.industry, mentor.industries);
-    const cadScore = cadenceScore(founder.meetingFrequency, mentor.meetingFrequency);
-    const challengeScore = challengeExpertiseOverlap(
-      founder.mainChallenge,
-      founder.supportNeeds,
-      mentor.expertise,
-    );
+        const indScore = industryScore(founder.industry, mentor.industries);
+        const cadScore = cadenceScore(
+            founder.meetingFrequency,
+            mentor.meetingFrequency,
+            mentor.monthlyTime
+        );
+        const expBonus = experienceBonus(founder, mentor);
 
-    const deterministicScore = indScore + cadScore + challengeScore;
+        const deterministicScore = indScore + cadScore + expBonus;
 
-    results.push({
-      founder,
-      deterministicScore,
-      totalScore: deterministicScore,
-      explanation: generateFounderExplanation(mentor, founder, deterministicScore),
-      relevantTags: [founder.industry, founder.startupStage, founder.mainChallenge],
-      caveat: generateFounderCaveat(mentor, founder),
-    });
-  }
+        results.push({
+            founder,
+            deterministicScore,
+            totalScore: normalizeDeterministicScore(deterministicScore),
+            explanation: generateFounderSideExplanation(mentor, founder),
+            relevantTags: [founder.industry, founder.startupStage, founder.mainChallenge],
+            caveat: generateFounderSideCaveat(mentor, founder),
+        });
+    }
 
-  return results
-    .sort((a, b) => b.totalScore - a.totalScore)
-    .slice(0, 3)
-    .map((r) => ({
-      ...r,
-      totalScore: Math.min(100, Math.round((r.totalScore / 45) * 100)),
-    }));
-}
-
-function generateExplanation(founder: FounderProfile, mentor: MentorProfile, score: number): string {
-  const parts: string[] = [];
-
-  if (mentor.industries.includes(founder.industry)) {
-    parts.push(`${mentor.fullName} has deep experience in ${founder.industry}`);
-  }
-
-  const challengeMap: Record<string, string[]> = {
-    'Product': ['Product', 'Design'],
-    'Validation': ['Product', 'Growth'],
-    'Technical build': ['Engineering', 'Product'],
-    'Go-to-market': ['Go-to-market', 'Growth', 'B2B Sales'],
-    'Growth': ['Growth', 'Go-to-market'],
-    'Fundraising': ['Fundraising'],
-    'Operations': ['Operations', 'Hiring'],
-    'Hiring': ['Hiring', 'Operations'],
-  };
-
-  const relevant = challengeMap[founder.mainChallenge] || [];
-  const matched = relevant.filter((r) => mentor.expertise.includes(r));
-  if (matched.length > 0) {
-    parts.push(`with strong expertise in ${matched.join(' and ')} — directly relevant to your ${founder.mainChallenge.toLowerCase()} challenge`);
-  }
-
-  if (mentor.experienceBackground.includes('Founder')) {
-    parts.push('As a fellow founder, they understand the early-stage grind firsthand');
-  }
-
-  return parts.length > 0
-    ? parts.join('. ') + '.'
-    : `${mentor.fullName} brings relevant experience as ${mentor.currentRole} and can support your journey at the ${founder.startupStage} stage.`;
-}
-
-function generateCaveat(founder: FounderProfile, mentor: MentorProfile): string | undefined {
-  if (founder.meetingFrequency === 'Weekly' && mentor.meetingFrequency === 'Monthly') {
-    return 'Note: This mentor prefers monthly meetings while you requested weekly — discuss expectations early.';
-  }
-  if (mentor.monthlyTime === 'Up to 1 hour') {
-    return 'This mentor has limited availability — make sure to come prepared to each session.';
-  }
-  return undefined;
-}
-
-function generateFounderExplanation(mentor: MentorProfile, founder: FounderDemoProfile, score: number): string {
-  const parts: string[] = [];
-  if (mentor.industries.includes(founder.industry)) {
-    parts.push(`${founder.fullName} is building ${founder.startupName} in ${founder.industry}, an industry you know well`);
-  }
-  if (mentor.preferredMenteeStages.includes(founder.startupStage)) {
-    parts.push(`They're at the ${founder.startupStage} stage, which aligns with your mentoring preferences`);
-  }
-  return parts.length > 0
-    ? parts.join('. ') + '.'
-    : `${founder.fullName} is building ${founder.startupName} and could benefit from your expertise.`;
-}
-
-function generateFounderCaveat(mentor: MentorProfile, founder: FounderDemoProfile): string | undefined {
-  if (mentor.meetingFrequency !== founder.meetingFrequency) {
-    return `Meeting frequency mismatch: you prefer ${mentor.meetingFrequency.toLowerCase()}, they prefer ${founder.meetingFrequency.toLowerCase()}.`;
-  }
-  return undefined;
+    return results.sort((a, b) => b.deterministicScore - a.deterministicScore).slice(0, 3);
 }

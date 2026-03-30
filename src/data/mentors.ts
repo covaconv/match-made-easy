@@ -13,6 +13,7 @@ export const mentors: MentorProfile[] = [
     meetingFrequency: 'Biweekly',
     monthlyTime: '2 to 3 hours',
     mentoringCapacity: '2 founders',
+    currentMatches: 1,
     threeMonthOutcome: 'Help a founder go from MVP to first 100 paying users with a clear GTM strategy and investor-ready pitch.',
   },
   {
@@ -26,7 +27,8 @@ export const mentors: MentorProfile[] = [
     preferredMenteeStages: ['Idea', 'MVP'],
     meetingFrequency: 'Weekly',
     monthlyTime: '4+ hours',
-    mentoringCapacity: '1 founder',
+      mentoringCapacity: '1 founder',
+      currentMatches: 0,
     threeMonthOutcome: 'Guide a technical founder through building a solid MVP architecture and shipping v1 to real users.',
   },
   {
@@ -40,7 +42,8 @@ export const mentors: MentorProfile[] = [
     preferredMenteeStages: ['Early traction', 'Revenue'],
     meetingFrequency: 'Monthly',
     monthlyTime: '2 to 3 hours',
-    mentoringCapacity: '3+ founders',
+      mentoringCapacity: '3+ founders',
+      currentMatches: 1,
     threeMonthOutcome: 'Help founders nail their Series A narrative and connect them with relevant investors in LATAM.',
   },
   {
@@ -54,7 +57,8 @@ export const mentors: MentorProfile[] = [
     preferredMenteeStages: ['MVP', 'Early traction', 'Revenue'],
     meetingFrequency: 'Biweekly',
     monthlyTime: '2 to 3 hours',
-    mentoringCapacity: '2 founders',
+      mentoringCapacity: '2 founders',
+      currentMatches: 1,
     threeMonthOutcome: 'Unlock growth loops and help founders find scalable acquisition channels beyond paid ads.',
   },
   {
@@ -68,7 +72,8 @@ export const mentors: MentorProfile[] = [
     preferredMenteeStages: ['Idea', 'MVP'],
     meetingFrequency: 'Weekly',
     monthlyTime: '2 to 3 hours',
-    mentoringCapacity: '1 founder',
+      mentoringCapacity: '1 founder',
+      currentMatches: 0,
     threeMonthOutcome: 'Help an AI-focused founder validate their core model, build a clean data pipeline, and ship a usable prototype.',
   },
   {
@@ -82,7 +87,8 @@ export const mentors: MentorProfile[] = [
     preferredMenteeStages: ['Early traction', 'Revenue'],
     meetingFrequency: 'Monthly',
     monthlyTime: 'Up to 1 hour',
-    mentoringCapacity: '2 founders',
+      mentoringCapacity: '2 founders',
+      currentMatches: 2,
     threeMonthOutcome: 'Help founders professionalize operations and build hiring frameworks for their first 10 employees.',
   },
   {
@@ -96,7 +102,8 @@ export const mentors: MentorProfile[] = [
     preferredMenteeStages: ['Idea', 'MVP', 'Early traction'],
     meetingFrequency: 'Biweekly',
     monthlyTime: '2 to 3 hours',
-    mentoringCapacity: '2 founders',
+      mentoringCapacity: '2 founders',
+      currentMatches: 1,
     threeMonthOutcome: 'Help founders in education and social impact find product-market fit through rapid user testing and iteration.',
   },
   {
@@ -110,7 +117,8 @@ export const mentors: MentorProfile[] = [
     preferredMenteeStages: ['MVP', 'Early traction'],
     meetingFrequency: 'Biweekly',
     monthlyTime: '2 to 3 hours',
-    mentoringCapacity: '2 founders',
+      mentoringCapacity: '2 founders',
+      currentMatches: 0,
     threeMonthOutcome: 'Help founders ship reliable products by establishing good engineering practices and CI/CD pipelines early.',
   },
 ];

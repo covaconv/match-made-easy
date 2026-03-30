@@ -83,6 +83,13 @@ const Index = () => {
     <>
       {screen === 'landing' && <Landing onStart={() => setScreen('role')} />}
 
+      {screen === 'auth' && (
+        <LoginRegister
+          onAuthSuccess={() => setScreen('role')}
+          onSkip={() => setScreen('role')}
+        />
+      )}
+
       {screen === 'role' && <RoleSelect onSelect={handleRoleSelect} />}
 
       {(screen === 'founder-step-1' || screen === 'founder-step-2' || screen === 'founder-step-3') && (

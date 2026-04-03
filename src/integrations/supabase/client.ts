@@ -8,7 +8,18 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+const isConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+
+if (!isConfigured) {
+  console.warn(
+    '[supabase] Missing VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY. Running in demo mode with Supabase disabled.'
+  );
+}
+
+export const supabase = createClient<Database>(
+  SUPABASE_URL ?? 'http://localhost:54321',
+  SUPABASE_PUBLISHABLE_KEY ?? 'epic-match-demo-key',
+  {
   auth: {
     storage: localStorage,
     persistSession: true,

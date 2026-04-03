@@ -1,136 +1,22 @@
-# EPIC Match
+# EPIC Match Copilot 
+**The Intelligent Matching Platform for EPIC Lab ITAM**
 
-AI-powered mentor-founder matching prototype for EPIC Lab ITAM.
+EPIC Match is a high-fidelity matching engine designed to connect ITAM founders with expert mentors. It combines strict deterministic business logic with the qualitative reasoning of Claude 3.5 to ensure every connection is both practical and meaningful.
 
-EPIC Match helps ITAM founders find the right alumni mentors using AI-assisted compatibility scoring. The product is designed around a founder-first flow: founders submit their profile, the app scores eligible mentors, and returns the top matches with concise explanations and an optional caveat.
+## Key Features
+* **Hybrid Matching Engine**: Uses a 45-point deterministic scale (Industry, Stage, Cadence) followed by AI-enriched qualitative scoring.
+* **Real-time Dashboards**: Role-specific views for Founders and Mentors to manage the "Handshake".
+* **The Feedback Loop**: A self-optimizing system where completed meetups influence future match rankings via a sliding-scale bonus (+5 to -5).
+* **Capacity Safeguards**: Prevents mentor burnout by automatically locking profiles that reach their stated mentoring limit.
 
-## Why this project exists
+## Tech Stack
+* **Frontend**: React, TypeScript, Tailwind CSS.
+* **Backend/Auth**: Supabase (PostgreSQL + RLS Policies).
+* **AI Intelligence**: Anthropic Claude API (Claude 3.5 Haiku/Sonnet).
 
-EPIC Lab connects student founders with alumni mentors, but matching quality becomes harder to maintain as the ecosystem grows. EPIC Match is a prototype that explores a more structured and scalable matching process by combining deterministic product logic with AI-generated judgment where it adds the most value.
-
-## Core product flow
-
-### Founder flow
-
-* Landing page
-* Role selection
-* 3-step founder onboarding
-* Intentional loading state
-* Top 3 mentor matches
-
-### Mentor flow
-
-* Role selection
-* 3-step mentor onboarding
-* Confirmation screen
-* Optional entry into mentor-side match results
-
-## Matching logic
-
-The matching system is split between app-side scoring and Claude-based scoring.
-
-### Computed in the app
-
-* Hard filters
-
-  * capacity
-  * stage fit
-* Deterministic scoring
-
-  * industry fit
-  * meeting cadence fit
-  * experience background bonus
-
-### Computed by Claude
-
-* Challenge × Expertise score
-* Open text alignment score
-* Match explanation
-* Optional caveat
-
-The final match score combines both deterministic and AI-generated components, then ranks the top candidates.
-
-## Product design direction
-
-* Dark minimal UI
-* Burnt orange accent
-* Explanation visually dominant
-* Score visible, but secondary
-* Mobile-responsive form flow
-* Chips for most structured inputs
-* Searchable multi-select for ITAM majors, with up to 2 selections
-
-## Tech stack
-
-* React
-* TypeScript
-* Vite
-* Tailwind CSS
-* Lovable
-* Claude API
-
-## Project status
-
-This is an in-progress prototype. The core UI, onboarding flows, demo data, and matching architecture are being built first. The goal is to create a polished demo for the MAD Fellowship 2026 challenge by EPIC Lab ITAM.
-
-## Getting started
-
-Install dependencies:
-
-npm install
-
-Start the development server:
-
-npm run dev
-
-Build the project:
-
-npm run build
-
-Run linting:
-
-npm run lint
-
-Run tests:
-
-npm run test
-
-## Project structure
-
-src/
-data/
-constants.ts
-mentors.ts
-founders.ts
-types/
-index.ts
-components/
-ChipSelector.tsx
-SearchableMultiSelect.tsx
-ProgressBar.tsx
-ScreenShell.tsx
-ResultCard.tsx
-ConfirmationScreen.tsx
-Landing.tsx
-RoleSelect.tsx
-FounderForm.tsx
-MentorForm.tsx
-LoadingScreen.tsx
-ResultsScreen.tsx
-lib/
-matching.ts
-claude.ts
-pages/
-Index.tsx
-
-## Notes
-
-* This repo currently uses hardcoded demo data for mentors and founders.
-* The founder flow is the primary polished path.
-* The mentor flow is included as a secondary, lighter path.
-* Claude integration should enhance ranking and explanations, but the app remains the source of truth for deterministic matching logic.
-
-## License
-
-No license specified yet.
-
+## Project Structure
+* `src/hooks/useEpicMatch.ts`: The central state machine and interaction logic.
+* `src/lib/matching.ts`: The deterministic "bouncer" and filtering logic.
+* `src/lib/claude.ts`: The bridge between the app and AI enrichment.
+* `src/pages/api/match.ts`: The server-side prompt engineering for the matching engine.
+* `src/lib/supabase.ts`: Database abstractions and feedback aggregation.

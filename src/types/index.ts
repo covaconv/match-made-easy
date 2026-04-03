@@ -39,6 +39,7 @@ export interface MatchResult {
   industryScore: number;
   cadenceScore: number;
   expBonusScore: number;
+  feedbackBonusScore: number;
   aiScore?: number;
   totalScore: number;
   explanation: string;
@@ -52,6 +53,7 @@ export interface FounderMatchResult {
   industryScore: number;
   cadenceScore: number;
   expBonusScore: number;
+  feedbackBonusScore: number;
   aiScore?: number;
   totalScore: number;
   explanation: string;
@@ -83,6 +85,14 @@ export interface Feedback {
   given_by: string;
   rating: number;
   qualitative_notes: string | null;
+}
+
+export type MeetupStatus = Meetup['status'];
+
+export interface MeetupWithCounterparty extends Meetup {
+  counterparty_name?: string;
+  counterparty_subtitle?: string;
+  counterparty_email?: string;
 }
 
 // Database row shapes (snake_case, for DB <-> app mapping)
@@ -134,4 +144,5 @@ export type Screen =
   | 'mentor-step-3'
   | 'mentor-confirmation'
   | 'mentor-loading'
-  | 'mentor-results';
+  | 'mentor-results'
+  | 'dashboard';

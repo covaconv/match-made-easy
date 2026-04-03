@@ -8,6 +8,10 @@ interface ResultCardProps {
   score: number;
   expertiseTags: string[];
   caveat?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  actionDisabled?: boolean;
+  actionHint?: string;
 }
 
 const ResultCard = ({
@@ -18,6 +22,10 @@ const ResultCard = ({
   score,
   expertiseTags,
   caveat,
+  actionLabel,
+  onAction,
+  actionDisabled,
+  actionHint,
 }: ResultCardProps) => {
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-4">
@@ -58,6 +66,19 @@ const ResultCard = ({
         <p className="text-xs text-muted-foreground italic border-t border-border pt-3">
           {caveat}
         </p>
+      )}
+
+      {actionLabel && (
+        <div className="border-t border-border pt-3 space-y-2">
+          <button
+            onClick={onAction}
+            disabled={actionDisabled}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {actionLabel}
+          </button>
+          {actionHint && <p className="text-xs text-muted-foreground">{actionHint}</p>}
+        </div>
       )}
 
     </div>

@@ -20,15 +20,44 @@ const INDUSTRY_ADJACENCY: Record<string, string[]> = {
     Other: [],
 };
 
+// --- ARRAY-SAFE PROPERTY GUARDS ---
+const toArray = (val: unknown): string[] => {
+    if (Array.isArray(val)) return val as string[];
+    if (typeof val === 'string') return val.split(',').map(s => s.trim());
+    return [];
+};
+
+// Helper to safely read properties from objects without triggering index signature errors
+const readProp = (obj: unknown, key: string): unknown => {
+    if (obj && typeof obj === 'object' && key in obj) {
+        return (obj as Record<string, unknown>)[key];
+    }
+    return undefined;
+};
+
+const getStages = (m: unknown): string[] => toArray(readProp(m, 'preferredMenteeStages') ?? readProp(m, 'preferred_mentee_stages'));
+const getIndustries = (m: unknown): string[] => toArray(readProp(m, 'industries'));
+const getExpertise = (m: unknown): string[] => toArray(readProp(m, 'expertise'));
+const getBackground = (m: unknown): string[] => toArray(readProp(m, 'experienceBackground') ?? readProp(m, 'experience_background'));
+const getCapacityString = (m: unknown): string => String(readProp(m, 'mentoringCapacity') ?? readProp(m, 'mentoring_capacity') ?? '');
+const getFreq = (obj: unknown): string => String(readProp(obj, 'meetingFrequency') ?? readProp(obj, 'meeting_frequency') ?? '');
+const getTime = (m: unknown): string => String(readProp(m, 'monthlyTime') ?? readProp(m, 'monthly_time') ?? '');
+
+const getFounderStage = (f: unknown): string => String(readProp(f, 'startupStage') ?? readProp(f, 'startup_stage') ?? '');
+const getFounderChallenge = (f: unknown): string => String(readProp(f, 'mainChallenge') ?? readProp(f, 'main_challenge') ?? '');
+const getFounderNeeds = (f: unknown): string[] => toArray(readProp(f, 'supportNeeds') ?? readProp(f, 'support_needs'));
+
 function getCapacityLimit(capacity: string): number {
-    if (capacity === '1 founder') return 1;
-    if (capacity === '2 founders') return 2;
-    if (capacity === '3+ founders') return 3;
-    return 0;
+    if (!capacity) return 0;
+    // Safely extracts the first number it finds (handles "1 founder", "2 Founders", "3+", etc.)
+    const match = String(capacity).match(/\d+/);
+    return match ? parseInt(match[0], 10) : 0;
 }
 
 function getOpenSlots(mentor: MentorProfile): number {
-    return Math.max(0, getCapacityLimit(mentor.mentoringCapacity) - mentor.currentMatches);
+    const matches = Number(mentor.currentMatches ?? (mentor as unknown as Record<string, unknown>).current_matches ?? 0);
+    const limit = getCapacityLimit(getCapacityString(mentor));
+    return Math.max(0, limit - matches);
 }
 
 function stageFilter(founderStage: string, mentorStages: string[]): boolean {
@@ -41,12 +70,9 @@ function capacityFilter(mentor: MentorProfile): boolean {
 
 function industryScore(founderIndustry: string, mentorIndustries: string[]): number {
     if (mentorIndustries.includes(founderIndustry)) return 20;
-
     const adjacent = INDUSTRY_ADJACENCY[founderIndustry] || [];
     if (mentorIndustries.some((industry) => adjacent.includes(industry))) return 12;
-
     if (founderIndustry === 'Other' || mentorIndustries.includes('Other')) return 5;
-
     return 0;
 }
 
@@ -71,217 +97,91 @@ function cadenceScore(
     mentorMonthlyTime: string
 ): number {
     let score = baseCadenceScore(founderFrequency, mentorFrequency);
-
     if (mentorMonthlyTime === 'Up to 1 hour') {
-        if (founderFrequency === 'Weekly') {
-            score = Math.min(score, 2);
-        } else if (founderFrequency === 'Biweekly') {
-            score = Math.min(score, 6);
-        }
+        if (founderFrequency === 'Weekly') score = Math.min(score, 2);
+        else if (founderFrequency === 'Biweekly') score = Math.min(score, 6);
     }
-
     return score;
 }
 
 function experienceBonus(founder: FounderProfile, mentor: MentorProfile): number {
     let score = 0;
+    const background = getBackground(mentor);
+    const fStage = getFounderStage(founder);
+    const fChallenge = getFounderChallenge(founder);
+    const fNeeds = getFounderNeeds(founder);
 
-    const hasFounder = mentor.experienceBackground.includes('Founder');
-    const hasOperator = mentor.experienceBackground.includes('Operator');
-    const hasInvestor = mentor.experienceBackground.includes('Investor');
-    const hasCorporate = mentor.experienceBackground.includes('Corporate');
-    const hasConsultant = mentor.experienceBackground.includes('Consultant');
+    const hasFounder = background.includes('Founder');
+    const hasOperator = background.includes('Operator');
+    const hasInvestor = background.includes('Investor');
+    const hasCorporate = background.includes('Corporate');
+    const hasConsultant = background.includes('Consultant');
 
     if (hasFounder) {
-        if (['Idea', 'MVP', 'Early traction'].includes(founder.startupStage)) {
-            score = Math.max(score, 8);
-        } else if (founder.startupStage === 'Revenue') {
-            score = Math.max(score, 4);
-        }
+        if (['Idea', 'MVP', 'Early traction'].includes(fStage)) score = Math.max(score, 8);
+        else if (fStage === 'Revenue') score = Math.max(score, 4);
     }
-
-    if (
-        hasInvestor &&
-        (founder.mainChallenge === 'Fundraising' ||
-            founder.supportNeeds.includes('Fundraising advice') ||
-            founder.supportNeeds.includes('Introductions'))
-    ) {
+    if (hasInvestor && (fChallenge === 'Fundraising' || fNeeds.includes('Fundraising advice'))) {
         score = Math.max(score, 9);
     }
-
-    if (
-        hasOperator &&
-        ['Operations', 'Growth', 'Go-to-market', 'Hiring'].includes(founder.mainChallenge)
-    ) {
+    if (hasOperator && ['Operations', 'Growth', 'Go-to-market', 'Hiring'].includes(fChallenge)) {
         score = Math.max(score, 8);
     }
-
-    if (
-        hasCorporate &&
-        ['Operations', 'Hiring', 'Go-to-market'].includes(founder.mainChallenge)
-    ) {
+    if (hasCorporate && ['Operations', 'Hiring', 'Go-to-market'].includes(fChallenge)) {
         score = Math.max(score, 6);
     }
-
-    if (
-        hasConsultant &&
-        ['Validation', 'Product', 'Go-to-market'].includes(founder.mainChallenge)
-    ) {
+    if (hasConsultant && ['Validation', 'Product', 'Go-to-market'].includes(fChallenge)) {
         score = Math.max(score, 5);
     }
-
     return Math.min(score, 10);
 }
 
-function normalizeDeterministicScore(score: number): number {
-    return Math.min(100, Math.round((score / 40) * 100));
-}
-
-function generateDeterministicExplanation(founder: FounderProfile, mentor: MentorProfile): string {
-    const sentences: string[] = [];
-
-    if (mentor.industries.includes(founder.industry)) {
-        sentences.push(
-            `${mentor.fullName} is a strong domain fit because they already work in ${founder.industry}.`
-        );
-    } else {
-        const adjacent = INDUSTRY_ADJACENCY[founder.industry] || [];
-        if (mentor.industries.some((industry) => adjacent.includes(industry))) {
-            sentences.push(
-                `${mentor.fullName} brings experience from industries adjacent to ${founder.industry}, which can still translate well to your company.`
-            );
-        }
-    }
-
-    if (mentor.preferredMenteeStages.includes(founder.startupStage)) {
-        sentences.push(
-            `They prefer working with founders at the ${founder.startupStage} stage, so the match is operationally aligned from the start.`
-        );
-    }
-
-    if (
-        mentor.experienceBackground.includes('Founder') &&
-        ['Idea', 'MVP', 'Early traction'].includes(founder.startupStage)
-    ) {
-        sentences.push(
-            `Their founder background is especially relevant for an early-stage startup like yours.`
-        );
-    } else if (
-        mentor.experienceBackground.includes('Investor') &&
-        (founder.mainChallenge === 'Fundraising' ||
-            founder.supportNeeds.includes('Fundraising advice'))
-    ) {
-        sentences.push(
-            `Their investor background could be particularly useful given your current fundraising-related needs.`
-        );
-    }
-
-    return (
-        sentences.slice(0, 2).join(' ') ||
-        `${mentor.fullName} looks like a solid fit based on stage, availability, and background.`
-    );
-}
-
-function generateDeterministicCaveat(founder: FounderProfile, mentor: MentorProfile): string | undefined {
-    if (mentor.monthlyTime === 'Up to 1 hour') {
-        return 'This mentor has limited monthly availability, so each session would need to be focused.';
-    }
-
-    const diff = cadenceDistance(founder.meetingFrequency, mentor.meetingFrequency);
-    if (diff >= 2) {
-        return `Your preferred meeting cadence and this mentor's availability style may need to be aligned early.`;
-    }
-
-    if (!mentor.industries.includes(founder.industry)) {
-        const adjacent = INDUSTRY_ADJACENCY[founder.industry] || [];
-        if (mentor.industries.some((industry) => adjacent.includes(industry))) {
-            return 'Their industry background is adjacent rather than exact, so some context ramp-up may be needed.';
-        }
-    }
-
-    return undefined;
-}
-
-function generateFounderSideExplanation(
-    mentor: MentorProfile,
-    founder: FounderDemoProfile
-): string {
-    const sentences: string[] = [];
-
-    if (mentor.preferredMenteeStages.includes(founder.startupStage)) {
-        sentences.push(
-            `${founder.fullName} is at the ${founder.startupStage} stage, which fits the kinds of founders you prefer to mentor.`
-        );
-    }
-
-    if (mentor.industries.includes(founder.industry)) {
-        sentences.push(
-            `Their company operates in ${founder.industry}, an industry you already know well.`
-        );
-    } else {
-        const adjacent = INDUSTRY_ADJACENCY[founder.industry] || [];
-        if (mentor.industries.some((industry) => adjacent.includes(industry))) {
-            sentences.push(
-                `Their industry is adjacent to sectors you already know, which could still make this a useful match.`
-            );
-        }
-    }
-
-    return (
-        sentences.slice(0, 2).join(' ') ||
-        `${founder.fullName} could be a reasonable match based on stage, industry, and availability fit.`
-    );
-}
-
-function generateFounderSideCaveat(
-    mentor: MentorProfile,
-    founder: FounderDemoProfile
-): string | undefined {
-    if (mentor.monthlyTime === 'Up to 1 hour') {
-        return 'Your monthly availability is limited, so expectations may need to be set clearly from the beginning.';
-    }
-
-    const diff = cadenceDistance(founder.meetingFrequency, mentor.meetingFrequency);
-    if (diff >= 2) {
-        return `Your preferred cadence and this founder's preferred cadence may not align perfectly.`;
-    }
-
-    return undefined;
+function normalizeDeterministicScore(score: number, maxScore: number): number {
+    // Math.max(0) ensures a penalty doesn't push the score below 0%
+    return Math.max(0, Math.min(100, Math.round((score / maxScore) * 100)));
 }
 
 export function matchFounderToMentors(
     founder: FounderProfile,
-    allMentors: MentorProfile[]
+    allMentors: MentorProfile[],
+    feedbackBonusByMentorId: Record<string, number> = {}
 ): MatchResult[] {
     const results: MatchResult[] = [];
+    const fStage = getFounderStage(founder);
+    const fIndustry = founder.industry;
+    const fFreq = getFreq(founder);
 
     for (const mentor of allMentors) {
-        if (!stageFilter(founder.startupStage, mentor.preferredMenteeStages)) continue;
+        const mentorStages = getStages(mentor);
+        const mentorIndustries = getIndustries(mentor);
+
+        if (!stageFilter(fStage, mentorStages)) continue;
         if (!capacityFilter(mentor)) continue;
 
-        const indScore = industryScore(founder.industry, mentor.industries);
-        const cadScore = cadenceScore(
-            founder.meetingFrequency,
-            mentor.meetingFrequency,
-            mentor.monthlyTime
-        );
+        const indScore = industryScore(fIndustry, mentorIndustries);
+        const cadScore = cadenceScore(fFreq, getFreq(mentor), getTime(mentor));
         const expBonus = experienceBonus(founder, mentor);
-
-        const deterministicScore = indScore + cadScore + expBonus;
+        const feedbackBonus = feedbackBonusByMentorId[mentor.id] ?? 0;
+        const deterministicScore = indScore + cadScore + expBonus + feedbackBonus;
 
         results.push({
-  mentor,
-  deterministicScore,
-  industryScore: indScore,
-  cadenceScore: cadScore,
-  expBonusScore: expBonus,
-  totalScore: normalizeDeterministicScore(deterministicScore),
-  explanation: generateDeterministicExplanation(founder, mentor),
-  expertiseTags: mentor.expertise.slice(0, 4),
-  caveat: generateDeterministicCaveat(founder, mentor),
-});
+            mentor: {
+                ...mentor,
+                fullName: String(mentor.fullName ?? (mentor as unknown as Record<string, unknown>).full_name),
+                currentRole: String(mentor.currentRole ?? (mentor as unknown as Record<string, unknown>).current_role)
+            },
+            deterministicScore,
+            industryScore: indScore,
+            cadenceScore: cadScore,
+            expBonusScore: expBonus,
+            feedbackBonusScore: feedbackBonus,
+            totalScore: normalizeDeterministicScore(deterministicScore, 45),
+            explanation: "Deterministic match based on profile overlap. (AI enrichment temporarily unavailable)",
+            expertiseTags: getExpertise(mentor).slice(0, 4),
+            caveat: undefined,
+        });
     }
-
+    
     return results.sort((a, b) => b.deterministicScore - a.deterministicScore).slice(0, 3);
 }
 
@@ -290,33 +190,33 @@ export function matchMentorToFounders(
     allFounders: FounderDemoProfile[]
 ): FounderMatchResult[] {
     const results: FounderMatchResult[] = [];
+    const mentorStages = getStages(mentor);
+    const mentorIndustries = getIndustries(mentor);
 
     for (const founder of allFounders) {
-        if (!stageFilter(founder.startupStage, mentor.preferredMenteeStages)) continue;
+        const fStage = getFounderStage(founder);
+        const fFreq = getFreq(founder);
+
+        if (!stageFilter(fStage, mentorStages)) continue;
         if (!capacityFilter(mentor)) continue;
 
-        const indScore = industryScore(founder.industry, mentor.industries);
-        const cadScore = cadenceScore(
-            founder.meetingFrequency,
-            mentor.meetingFrequency,
-            mentor.monthlyTime
-        );
-        const expBonus = experienceBonus(founder, mentor);
-
+        const indScore = industryScore(founder.industry, mentorIndustries);
+        const cadScore = cadenceScore(fFreq, getFreq(mentor), getTime(mentor));
+        const expBonus = experienceBonus(founder as unknown as FounderProfile, mentor);
         const deterministicScore = indScore + cadScore + expBonus;
 
         results.push({
-  founder,
-  deterministicScore,
-  industryScore: indScore,
-  cadenceScore: cadScore,
-  expBonusScore: expBonus,
-  totalScore: normalizeDeterministicScore(deterministicScore),
-  explanation: generateFounderSideExplanation(mentor, founder),
-  relevantTags: [founder.industry, founder.startupStage, founder.mainChallenge],
-  caveat: generateFounderSideCaveat(mentor, founder),
-});
+            founder,
+            deterministicScore,
+            industryScore: indScore,
+            cadenceScore: cadScore,
+            expBonusScore: expBonus,
+            feedbackBonusScore: 0,
+            totalScore: normalizeDeterministicScore(deterministicScore, 40),
+            explanation: "Strong alignment detected.",
+            relevantTags: [founder.industry, fStage, getFounderChallenge(founder)],
+            caveat: undefined,
+        });
     }
-
     return results.sort((a, b) => b.deterministicScore - a.deterministicScore).slice(0, 3);
 }

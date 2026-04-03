@@ -1,9 +1,4 @@
-import { useState, useCallback } from 'react';
-import { Screen, Role, FounderProfile, MentorProfile, MatchResult, FounderMatchResult } from '@/types';
-import { mentors } from '@/data/mentors';
-import { founders } from '@/data/founders';
-import { matchFounderToMentors, matchMentorToFounders } from '@/lib/matching';
-import { enrichMatchesWithClaude } from '@/lib/claude';
+import { useEffect } from 'react';
 import Landing from '@/components/Landing';
 import RoleSelect from '@/components/RoleSelect';
 import FounderForm from '@/components/FounderForm';
@@ -12,126 +7,126 @@ import LoadingScreen from '@/components/LoadingScreen';
 import ResultsScreen from '@/components/ResultsScreen';
 import ConfirmationScreen from '@/components/ConfirmationScreen';
 import LoginRegister from '@/components/LoginRegister';
+import Dashboard from '@/components/Dashboard';
+import Navbar from '@/components/Navbar';
+import { useEpicMatch } from '@/hooks/useEpicMatch';
+import { Screen } from '@/types';
+import { getCurrentUser } from '@/lib/supabase';
 
 const Index = () => {
-  const [screen, setScreen] = useState<Screen>('landing');
-  const [founderResults, setFounderResults] = useState<MatchResult[]>([]);
-  const [mentorResults, setMentorResults] = useState<FounderMatchResult[]>([]);
-  const [mentorData, setMentorData] = useState<MentorProfile | null>(null);
-  const [founderData, setFounderData] = useState<FounderProfile | null>(null);
-  const [isMatching, setIsMatching] = useState(false);
+  const { state, actions } = useEpicMatch();
 
-  const startOver = useCallback(() => {
-    setScreen('landing');
-    setFounderResults([]);
-    setMentorResults([]);
-    setMentorData(null);
-    setFounderData(null);
-    setIsMatching(false);
-  }, []);
+  const handleLoadingComplete = (target: Screen) => {
+    if (!state.isMatching) actions.setScreen(target);
+  };
 
-  const handleFounderSubmit = useCallback(async (data: FounderProfile) => {
-  setFounderData(data);
-  setScreen('founder-loading');
-  setIsMatching(true);
-
-  const deterministic = matchFounderToMentors(data, mentors);
-  const results = await enrichMatchesWithClaude(data, deterministic);
-  setFounderResults(results);
-  setIsMatching(false);
-}, []);
-
-  const handleMentorSubmit = useCallback((data: MentorProfile) => {
-    setMentorData(data);
-    setScreen('mentor-confirmation');
-  }, []);
-
-  const handleMentorSeeMatches = useCallback(() => {
-    if (mentorData) {
-      setScreen('mentor-loading');
-      setIsMatching(true);
-
-        const results = matchMentorToFounders(mentorData, founders);
-        setMentorResults(results);
-        setIsMatching(false);
-    }
-  }, [mentorData]);
-
-  const handleLoadingComplete = useCallback((target: Screen) => {
-    // Only transition if matching is done; otherwise wait
-    if (!isMatching) {
-      setScreen(target);
-    } else {
-      // Poll until matching finishes
-      const interval = setInterval(() => {
-        setIsMatching((current) => {
-          if (!current) {
-            clearInterval(interval);
-            setScreen(target);
-          }
-          return current;
-        });
-      }, 300);
-    }
-  }, [isMatching]);
-
-  const handleRoleSelect = useCallback((role: Role) => {
-    setScreen(role === 'founder' ? 'founder-step-1' : 'mentor-step-1');
-  }, []);
+  useEffect(() => {
+    if (state.screen === 'founder-loading' && !state.isMatching) actions.setScreen('founder-results');
+    if (state.screen === 'mentor-loading' && !state.isMatching) actions.setScreen('mentor-results');
+  }, [state.screen, state.isMatching, actions]);
 
   return (
     <>
-      {screen === 'landing' && <Landing onStart={() => setScreen('role')} />}
-
-      {screen === 'auth' && (
+      <Navbar
+        isAuthenticated={state.isAuthenticated}
+        userEmail={state.currentUser?.email}
+        onSignOut={actions.handleSignOut}
+        onGoToDashboard={() => actions.setScreen('dashboard')}
+        showDashboardLink={state.isAuthenticated && state.screen !== 'dashboard'}
+      />
+      {state.screen === 'landing' && <Landing onStart={() => actions.setScreen('auth')} />}
+      {state.screen === 'auth' && (
         <LoginRegister
-          onAuthSuccess={() => setScreen('role')}
-          onSkip={() => setScreen('role')}
+          onAuthSuccess={async () => {
+            const user = await getCurrentUser();
+            if (user) await actions.resolvePostAuthDestination(user);
+          }}
+          onSkip={() => actions.setScreen('role')}
         />
       )}
-
-      {screen === 'role' && <RoleSelect onSelect={handleRoleSelect} />}
-
-      {(screen === 'founder-step-1' || screen === 'founder-step-2' || screen === 'founder-step-3') && (
-        <FounderForm onSubmit={handleFounderSubmit} onBack={() => setScreen('role')} />
+      {state.screen === 'role' && <RoleSelect onSelect={actions.handleRoleSelect} />}
+      {state.screen.includes('founder-step') && (
+        <FounderForm onSubmit={actions.handleFounderSubmit} onBack={() => actions.setScreen('role')} />
       )}
-
-      {screen === 'founder-loading' && (
-        <LoadingScreen onComplete={() => handleLoadingComplete('founder-results')} />
+      {state.screen === 'founder-loading' && (
+        <LoadingScreen
+          onComplete={() => handleLoadingComplete('founder-results')}
+          isMatching={state.isMatching}
+        />
       )}
-
-      {screen === 'founder-results' && (
-              <ResultsScreen
-                  results={founderResults}
-                  eligibleCount={mentors.length}
-                  onStartOver={startOver}
-              />
-       )}
-
-      {(screen === 'mentor-step-1' || screen === 'mentor-step-2' || screen === 'mentor-step-3') && (
-        <MentorForm onSubmit={handleMentorSubmit} onBack={() => setScreen('role')} />
+      {state.screen === 'founder-results' && (
+        <ResultsScreen
+          results={state.founderResults}
+          eligibleCount={state.mentorPool.length}
+          showDashboardEntry={state.isAuthenticated}
+          founderId={state.currentUser?.id}
+          requestStateByMentorId={state.requestStates}
+          canRequestMeetup={actions.canRequestMeetup}
+          onRequestMeetup={(mId) => state.currentUser?.id && actions.handleRequestMeetup(state.currentUser.id, mId)}
+          onOpenDashboard={() => actions.setScreen('dashboard')}
+          onStartOver={actions.startOver}
+        />
       )}
-
-      {screen === 'mentor-confirmation' && mentorData && (
+      {state.screen.includes('mentor-step') && (
+        <MentorForm onSubmit={actions.handleMentorSubmit} onBack={() => actions.setScreen('role')} />
+      )}
+      {state.screen === 'mentor-confirmation' && state.mentorData && (
         <ConfirmationScreen
-          mentorName={mentorData.fullName.split(' ')[0]}
-          onSeeMatches={handleMentorSeeMatches}
+          mentorName={state.mentorData.fullName.split(' ')[0]}
+          onSeeMatches={actions.handleMentorSeeMatches}
         />
       )}
-
-      {screen === 'mentor-loading' && (
-        <LoadingScreen onComplete={() => handleLoadingComplete('mentor-results')} isMentor />
+      {state.screen === 'mentor-loading' && (
+        <LoadingScreen
+          onComplete={() => handleLoadingComplete('mentor-results')}
+          isMentor
+          isMatching={state.isMatching}
+        />
       )}
+      {state.screen === 'mentor-results' && (
+        <ResultsScreen
+          results={state.mentorResults}
+          isMentor
+          showDashboardEntry={state.isAuthenticated}
+          onOpenDashboard={() => actions.setScreen('dashboard')}
+          onStartOver={actions.startOver}
+        />
+      )}
+      {state.screen === 'dashboard' && state.currentRole && (
+  <Dashboard
+    role={state.currentRole}
+    meetups={state.meetups}
+    loading={state.isDashboardLoading}
+    onRefresh={actions.loadDashboard}
+    
+    // --- THE UNIFIED ROUTING FIX ---
+    onBackToResults={() => {
+      if (state.currentRole === 'mentor' && state.mentorResults.length === 0) {
+        // Mentors need a manual kickstart if memory was wiped
+        actions.handleMentorSeeMatches();
+      } 
+      else if (state.currentRole === 'founder' && state.isMatching) {
+        // Founders might still be matching in the background! Send to loading screen.
+        actions.setScreen('founder-loading');
+      } 
+      else {
+        // Everyone else goes to their standard results screen
+        actions.setScreen(state.currentRole === 'mentor' ? 'mentor-results' : 'founder-results');
+      }
+    }}
+    // --------------------------------
 
-          {screen === 'mentor-results' && (
-              <ResultsScreen
-                  results={mentorResults}
-                  isMentor
-                  onStartOver={startOver}
-              />
-          )}
+    onAccept={(id) => actions.handleUpdateMeetupStatus(id, 'accepted')}
+    onDecline={(id) => actions.handleUpdateMeetupStatus(id, 'declined')}
+    onComplete={(id) => actions.handleUpdateMeetupStatus(id, 'completed')}
+
+    onLeaveFeedback={actions.handleLeaveFeedback}
+    feedbackSubmittedByMeetupId={state.feedbackSubmittedByMeetupId}
+  />
+)}
     </>
   );
+  
 };
 
 export default Index;

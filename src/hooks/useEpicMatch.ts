@@ -279,15 +279,23 @@ useEffect(() => {
       setScreen, startOver, handleSignOut, resolvePostAuthDestination, canRequestMeetup,
       loadDashboard, handleRequestMeetup, handleUpdateMeetupStatus, handleLeaveFeedback,
       handleRoleSelect: async (role: Role) => {
+        // 1. Optimistically update state so the UI transitions instantly
         setCurrentRole(role);
-        if (currentUser) {
-          // 1. Update the hidden Auth metadata
-          await supabase.auth.updateUser({ data: { role } });
-          
-          // 2. 👇 ADD THIS LINE: Explicitly update the public profiles table
-          await supabase.from('profiles').update({ role }).eq('id', currentUser.id);
-        }
         setScreen(role === 'founder' ? 'founder-step-1' : 'mentor-step-1');
+
+        // 2. Sync with Supabase in the background without blocking the user
+        if (currentUser) {
+          try {
+            await Promise.all([
+              // Update the hidden Auth metadata
+              supabase.auth.updateUser({ data: { role } }),
+              // Explicitly update the public profiles table
+              supabase.from('profiles').update({ role }).eq('id', currentUser.id)
+            ]);
+          } catch (error) {
+            console.error("Background role sync failed:", error);
+          }
+        }
       },
       handleFounderSubmit: async (data: FounderProfile) => {
   setFounderData(data);
